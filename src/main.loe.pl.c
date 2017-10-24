@@ -490,7 +490,7 @@ l_ok:		switch(deflate(&cmp,Z_NO_FLUSH)){
 			return darc_compress_fwrite_error;
 		}
 	}
-	switch(e=deflateEnd(&cmp)){
+	switch(deflateEnd(&cmp)){
 		case Z_OK:{
 			if(overflow)
 				free(obuf);
@@ -512,7 +512,7 @@ l_ok:		switch(deflate(&cmp,Z_NO_FLUSH)){
 			return darc_compress_deflateend_data_error;
 		}
 		default:{
-			clog("Undefined bahavior.");
+			clog("Undefined behavior.");
 			if(overflow)
 				free(obuf);
 			free(ibuf);
@@ -642,7 +642,7 @@ l_ok:			switch(inflate(&cmp,Z_NO_FLUSH)){
 								return darc_decompress_inflateend_stream_error;
 							}
 							default:{
-								clog("inflateEnd: Undefined bahavior.");
+								clog("inflateEnd: Undefined behavior.");
 								if(overflow)
 									free(obuf);
 								free(ibuf);
