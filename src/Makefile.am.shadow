@@ -1,0 +1,4 @@
+bin_PROGRAMS=darc
+darc_SOURCES=main.c
+darc_CFLAGS=$(ZLIB_CFLAGS) 
+darc_LDADD=$(ZLIB_LIBS) 

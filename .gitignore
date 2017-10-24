@@ -1,0 +1,14 @@
+*.in
+*.o
+/configure
+Makefile
+/autom4te.cache/
+/aclocal.m4
+/build-aux/
+config.h
+config.log
+config.status
+src/.deps/
+src/darc
+stamp-h1
+*~

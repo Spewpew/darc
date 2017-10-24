@@ -1,0 +1,33 @@
+AC_PREREQ([2.69])
+AC_CONFIG_AUX_DIR([build-aux])
+AC_INIT([darc], [1.0])
+AC_CONFIG_SRCDIR([src/main.c])
+AC_CONFIG_HEADERS([config.h])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign no-dist-gzip dist-xz])
+
+# Checks for programs.
+AC_PROG_CC
+PKG_PROG_PKG_CONFIG([0.29.2])
+
+
+# Checks for libraries.
+PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.11])
+
+
+# Checks for header files.
+AC_CHECK_HEADERS([stdint.h])
+AC_CHECK_HEADERS([stdlib.h])
+AC_CHECK_HEADERS([string.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_INLINE
+AC_TYPE_INT64_T
+AC_TYPE_SIZE_T
+AC_TYPE_UINT64_T
+
+# Checks for library functions.
+AC_FUNC_MALLOC
+
+AC_CONFIG_FILES([Makefile
+                 src/Makefile])
+AC_OUTPUT
