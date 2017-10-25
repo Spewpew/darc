@@ -33,6 +33,7 @@ static SET_INI_BOOLEAN
 static int opt_compression_level=Z_BEST_COMPRESSION;
 
 set::gperfing{
+	%compare-lengths
 	%define hash-function-name cmplevel_hash
 	%define lookup-function-name cmplevel_in_word_set
 	%enum
@@ -187,7 +188,7 @@ set::ini_info(opt){
 							if(f){
 								k->level.pcmplevel[0]=f->level;
 							}else{
-								elog("'%.*s=%.*s' - unknown string value. Accepted string values: none,default,speed,size.",(int)kz,kn,(int)vz,v);
+								elog("'%.*s=%.*s' - unknown string value. Accepted string values: none,default,speed.",(int)kz,kn,(int)vz,v);
 								opt_syntax_error=SET_INI_TRUE;
 							}
 						}else{
@@ -199,7 +200,7 @@ set::ini_info(opt){
 							}
 						}
 					}else{
-						elog("'%.*s' - missing value([-1..9]|none|default|speed|size).",(int)kz,kn);
+						elog("'%.*s' - missing value([-1..9]|none|default|speed).",(int)kz,kn);
 						opt_syntax_error=SET_INI_TRUE;
 					}
 					return SET_INI_TRUE;
