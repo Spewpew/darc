@@ -20,9 +20,12 @@
 #define errnolog(f,args...) elog(f"; strerror: %s.",##args,strerror(errno))
 #define typemax(t) ((t)((t)-1 < 0 ? ((t)1 << (sizeof (t) * 8 - 2)) - 1 + ((t)1 << (sizeof (t) * 8 - 2)) : -1))
 
-typedef int64_t SET_INI_INT64;
-typedef uint64_t SET_INI_UINT64;
-#define SET_INI_ASSERT assert
+loe::replace({SET_INI_INT64},{int64_t});
+loe::replace({SET_INI_UINT64},{uint64_t});
+loe::replace({SET_INI_ASSERT},{assert});
+loe::replace({SET_INI_BOOLEAN},{int});
+loe::replace({SET_INI_FALSE},{0});
+loe::replace({SET_INI_TRUE},{1});
 
 set::ini_works;
 
@@ -130,19 +133,20 @@ size_t vz,SET_INI_INT64 i,enum SET_INI_TYPE t,const void*udata){
 	return SET_INI_TRUE;
 }
 
-#define LOE_STACK_MALLOC malloc
-#define LOE_STACK_REALLOC realloc
-#define LOE_STACK_FREE free
-#define LOE_STACK_LOG_CRITICAL_MALLOC_ERROR critmalloc(sizeof (*s) + sizeof (char) * start_queue_length,"")
-#define LOE_STACK_LOG_CRITICAL_REALLOC_ERROR critrealloc(rsz,"")
-#define LOE_STACK_LOG_OVERFLOW_ERROR elog("Too much data.")
-#define LOE_STACK_ASSERT assert
+loe::replace({LOE_STACK_MALLOC},{malloc});
+loe::replace({LOE_STACK_REALLOC},{realloc});
+loe::replace({LOE_STACK_FREE},{free});
+loe::replace({LOE_STACK_LOG_CRITICAL_MALLOC_ERROR},{critmalloc(rsz,"")});
+loe::replace({LOE_STACK_LOG_CRITICAL_REALLOC_ERROR},{critrealloc(rsz,"")});
+loe::replace({LOE_STACK_LOG_OVERFLOW_ERROR},{clog("Overflow.")});
+loe::replace({LOE_STACK_ASSERT},{assert});
 
 loe::stack(tcstr){
 	::index_type{size_t};
 	::length{size};
 	::queue{max_size};
 	::array{{char}{data}};
+	::allstatic;
 	size_t size,max_size;
 	char data[];
 }

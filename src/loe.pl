@@ -277,12 +277,7 @@ $groups_for_gperfing});
 
 sub iniworks($){
 	sub _iniworks{
-		return qq{#ifndef SET_INI_WORKS
-typedef int SET_INI_BOOLEAN;
-#define SET_INI_TRUE (!0)
-#define SET_INI_FALSE (!!0)
-
-enum SET_INI_TYPE{
+		return qq{enum SET_INI_TYPE{
 	SET_INI_TYPE_SINT64,SET_INI_TYPE_BOOLEAN,SET_INI_TYPE_STRING
 };
 
@@ -606,7 +601,6 @@ l_boolkw:;		const struct SET_INI_KEY *a;
 	}
 	return SET_INI_PARSER_OK;
 }
-#endif //SET_INI_WORKS
 };
 	}
 	return shift=~s/(^|\W)set::ini_works\s*;/$1._iniworks()/erg;
@@ -1225,7 +1219,14 @@ sub loestack_compose_definitions($$$){
 	my ($prefix,$t,$d)=(@_);
 	my %f=();
 	$f{defnew}=qq#$d->{declnew}\{
-	struct $prefix*s=LOE_STACK_MALLOC(sizeof(*s)+sizeof(${$t->{array}}[0])*start_queue_length);
+	struct $prefix*s;
+	size_t rsz;
+	if(__builtin_mul_overflow(sizeof(${$t->{array}}[0]),start_queue_length,&rsz) ||
+		__builtin_add_overflow(sizeof(struct $prefix),rsz,&rsz)){
+		LOE_STACK_LOG_OVERFLOW_ERROR;
+		return !!0;
+	}
+	s=LOE_STACK_MALLOC(rsz);
 	if(!s){
 		LOE_STACK_LOG_CRITICAL_MALLOC_ERROR;
 	}#.(defined $t->{queue}||defined $t->{length}?qq#else{
@@ -1237,7 +1238,14 @@ sub loestack_compose_definitions($$$){
 	my $len=defined $t->{length}?"s->$t->{length}=0;\n":'';
 	my $que=defined $t->{queue}?"s->$t->{queue}=start_queue_length;\n":'';
 	$f{defnewout}=qq#$d->{declnewout}\{
-	struct $prefix*s=LOE_STACK_MALLOC(sizeof(*s)+sizeof(${$t->{array}}[0])*start_queue_length);
+	struct $prefix*s;
+	size_t rsz;
+	if(__builtin_mul_overflow(sizeof(${$t->{array}}[0]),start_queue_length,&rsz) ||
+		__builtin_add_overflow(sizeof(*s),rsz,&rsz)){
+		LOE_STACK_LOG_OVERFLOW_ERROR;
+		return !!0;
+	}
+	s=LOE_STACK_MALLOC(rsz);
 	if(!s){
 		LOE_STACK_LOG_CRITICAL_MALLOC_ERROR;
 	}else{
@@ -1525,12 +1533,22 @@ sub loelist($){
 	return shift=~s/(^|\W)loe::list\s*\(\s*($REGEXP_C_ID)\s*\)\s*$REGEXP_NESTED_BRACKETS/$1._loelist($2,$3)/erg;
 }
 
+sub loereplace{
+	my $body=shift;
+	my @records=();
+	$body=$body=~s/(^|\W)loe::replace\s*\(\s*$REGEXP_NESTED_BRACKETS\s*,\s*$REGEXP_NESTED_BRACKETS\s*\)\s*;/push @records,[$2,$3];""/erg;
+	for my $r (@records){
+		$body=$body=~s/${$r}[0]/${$r}[1]/rg;
+	}
+	return $body;
+}
+
 my @dodo=(
 	{
 		regexp=>qr/--mutate=([^:]*):([^:]*)/,
 		action=>sub{
 			my ($srcf,$dstf)=($1,$2);
-			overfile($dstf,exomod('indent -sob',loespawn(loestore(loelist(loestack(archiveworks(setarchive(setstack(setlist(iniinfo(iniworks(gperfing(slurpfile($srcf))))))))))))));
+			overfile($dstf,exomod('indent -sob',loereplace(loespawn(loestore(loelist(loestack(archiveworks(setarchive(setstack(setlist(iniinfo(iniworks(gperfing(slurpfile($srcf)))))))))))))));
 		}
 	},
 	{
