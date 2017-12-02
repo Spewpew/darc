@@ -886,6 +886,260 @@ sub setarchive($){
 	return shift=~s/(^|\W)set::archive\s*\(\s*($REGEXP_C_ID)\s*,\s*"((?:\\"|[^"])*)"\s*\)\s*$REGEXP_NESTED_BRACKETS/$1._setarchive($2,$3,$4)/erg;
 }
 
+#~ sub archiveworks($){
+	#~ sub _archiveworks{
+		#~ return qq{struct SET_ARCHIVE_RECORD{
+	#~ SET_INI_INT64 offset;
+	#~ size_t size;
+	#~ size_t esize;
+#~ };
+
+#~ #ifdef SET_ARCHIVE_SDL
+#~ static void set_archive_reset_records(struct SET_ARCHIVE_RECORD*r,int n){
+	#~ for(int i=0;i<n;++i){
+		#~ r->offset= -1;
+		#~ r->esize=r->size=0;
+	#~ }
+#~ }
+#~ static SET_INI_BOOLEAN set_archive_check_records(struct SET_ARCHIVE_RECORD*r,int n){
+	#~ for(int i=0;i<n;++i){
+		#~ SDL_assert_always("Неполная или повреждённая запись." && r->offset!=-1 && r->size);
+		#~ if(r->offset==-1 || r->size==0)
+			#~ return SET_INI_FALSE;
+	#~ }
+	#~ return SET_INI_TRUE;
+#~ }
+#~ static SET_INI_BOOLEAN set_archive_init_records_from_file_sdl(const char *inifile,
+#~ SET_INI_GROUP_IN_WORD_SET get_group,SET_INI_REPORT_GROUP report_group,
+#~ SET_INI_REPORT_KEY report_key,struct SET_ARCHIVE_RECORD*udata){
+	#~ SDL_assert(inifile && *inifile && get_group && udata);
+	#~ SDL_RWops *r=SDL_RWFromFile(inifile,"rb");
+	#~ if(!r){
+		#~ SET_ARCHIVE_LOG_ERROR("%s.",SDL_GetError());
+		#~ return SET_INI_FALSE;
+	#~ }
+	#~ Sint64 len=SDL_RWsize(r);
+	#~ if(len<0){
+		#~ SET_ARCHIVE_LOG_ERROR("Не удалось определить размер файла '%s' (%s).",inifile,SDL_GetError());
+		#~ SDL_RWclose(r);
+		#~ return SET_INI_FALSE;
+	#~ }
+	#~ typeof(len) nl;
+	#~ if(__builtin_add_overflow(len,1,&nl)||
+		#~ nl>(((size_t)1<<(sizeof(size_t)*8-1))|~((size_t)1<<(sizeof(size_t)*8-1)))/((size_t)-1<0?2:1)){
+		#~ SET_ARCHIVE_LOG_ERROR("Не получится выделить память под файл '%s'.",inifile);
+		#~ SDL_RWclose(r);
+		#~ return SET_INI_FALSE;
+	#~ }
+	#~ char *m=SET_ARCHIVE_MALLOC(len+1);
+	#~ if(!m){
+		#~ SET_ARCHIVE_LOG_CRITICAL("Не удалось выделить память под файл '%s'.",inifile);
+		#~ SDL_RWclose(r);
+		#~ return SET_INI_FALSE;
+	#~ }
+	#~ if(SDL_RWread(r,m,1,len)!=len){
+		#~ SET_ARCHIVE_LOG_ERROR("Не удалось прочитать файл '%s' (%s).",inifile,SDL_GetError());
+		#~ SET_ARCHIVE_FREE(m);
+		#~ SDL_RWclose(r);
+		#~ return SET_INI_FALSE;
+	#~ }
+	#~ char *s=m;
+	#~ m[len]='\\0';
+	#~ if(len>=3){
+		#~ if((Uint8)m[0]==0xef && (Uint8)m[1]==0xbb && (Uint8)m[2]==0xbf)
+			#~ s+=3;
+	#~ }
+	#~ SDL_RWclose(r);
+	#~ switch(set_ini_parse_string(get_group,s,report_group,report_key,udata)){
+		#~ case SET_INI_PARSER_OK:break;
+		#~ case SET_INI_PARSER_CANCELLED:{
+			#~ SET_ARCHIVE_FREE(m);
+			#~ return SET_INI_FALSE;
+		#~ }
+		#~ case SET_INI_PARSER_UTF8_ERROR:{
+			#~ SET_ARCHIVE_LOG_ERROR("Ошибка кодировки UTF-8 файла '%s'.",inifile);
+			#~ SET_ARCHIVE_FREE(m);
+			#~ return SET_INI_FALSE;
+		#~ }
+	#~ }
+	#~ SET_ARCHIVE_FREE(m);
+	#~ return SET_INI_TRUE;
+#~ }
+#~ static Uint8 *set_archive_load_record_sdl(SDL_RWops *rw,struct SET_ARCHIVE_RECORD *r){
+	#~ SDL_assert(rw && r);
+	#~ SDL_assert_always("Повреждённая запись." && r->size>0);
+	#~ if(r->size<=0)
+		#~ return NULL;
+	#~ if(SDL_RWseek(rw,r->offset,RW_SEEK_SET)<0){
+		#~ SET_ARCHIVE_LOG_ERROR("Ошибка при перемещению по файлу (%s)",SDL_GetError());
+		#~ return NULL;
+	#~ }
+	#~ typeof(r->size) nsz;
+	#~ if(__builtin_add_overflow(r->size,1,&nsz)){
+		#~ SET_ARCHIVE_LOG_ERROR("Размер записи слишком большой.");
+		#~ return NULL;
+	#~ }
+	#~ Uint8 *idat=SET_ARCHIVE_MALLOC(nsz);
+	#~ Uint8 *edat;
+	#~ if(!idat){
+		#~ SET_ARCHIVE_LOG_CRITICAL("Не удалось выделить память.");
+		#~ return NULL;
+	#~ }
+	#~ if(SDL_RWread(rw,idat,1,r->size)!=r->size){
+		#~ SET_ARCHIVE_LOG_ERROR("%s.",SDL_GetError());
+		#~ SET_ARCHIVE_FREE(idat);
+		#~ return NULL;
+	#~ }
+	#~ if(!r->esize){
+		#~ idat[r->size]='\\0';
+		#~ return idat;
+	#~ }
+	#~ typeof(r->esize) nesz;
+	#~ if(__builtin_add_overflow(r->esize,1,&nesz)){
+		#~ SET_ARCHIVE_LOG_ERROR("После распаковки файл получится слишком большим.");
+		#~ SET_ARCHIVE_FREE(idat);
+		#~ return NULL;
+	#~ }
+	#~ edat=SET_ARCHIVE_MALLOC(nesz);
+	#~ if(!edat){
+		#~ SET_ARCHIVE_LOG_ERROR("Не удалось выделить память.");
+		#~ SET_ARCHIVE_FREE(idat);
+		#~ return NULL;
+	#~ }
+	#~ uLongf dstlen=r->esize;
+	#~ switch(uncompress(edat,&dstlen,idat,r->size)){
+		#~ case Z_OK:break;
+		#~ case Z_MEM_ERROR:{
+			#~ SET_ARCHIVE_LOG_ERROR("Недостаточно памяти.");
+			#~ SET_ARCHIVE_FREE(edat);
+			#~ SET_ARCHIVE_FREE(idat);
+			#~ return NULL;
+		#~ }
+		#~ case Z_BUF_ERROR:{
+			#~ SET_ARCHIVE_LOG_ERROR("Размер данных оказался больше указанного.");
+			#~ SET_ARCHIVE_FREE(edat);
+			#~ SET_ARCHIVE_FREE(idat);
+			#~ return NULL;
+		#~ }
+		#~ case Z_DATA_ERROR:{
+			#~ SET_ARCHIVE_LOG_ERROR("Входящие данные испорчены или имеют неверный размер.");
+			#~ SET_ARCHIVE_FREE(edat);
+			#~ SET_ARCHIVE_FREE(idat);
+			#~ return NULL;
+		#~ }
+	#~ }
+	#~ SET_ARCHIVE_FREE(idat);
+	#~ edat[r->esize]='\\0';
+	#~ return edat;
+#~ }
+#~ static SDL_Texture *set_archive_load_texture(SDL_RWops *rw,SDL_Renderer*renderer,struct SET_ARCHIVE_RECORD *r,int *w,int *h){
+	#~ SDL_assert(rw && r);
+	#~ Uint8 *m=set_archive_load_record_sdl(rw,r);
+	#~ if(m){
+		#~ SDL_RWops *o=SDL_RWFromConstMem(m,r->esize?r->esize:r->size);
+		#~ if(!o){
+			#~ SET_ARCHIVE_LOG_ERROR("%s.",SDL_GetError());
+			#~ SET_ARCHIVE_FREE(m);
+			#~ return NULL;
+		#~ }
+		#~ SDL_Surface *sur=IMG_Load_RW(o,1);
+		#~ if(!sur){
+			#~ SET_ARCHIVE_LOG_ERROR("%s.",IMG_GetError());
+			#~ SET_ARCHIVE_FREE(m);
+			#~ return NULL;
+		#~ }
+		#~ SDL_Texture *t=SDL_CreateTextureFromSurface(renderer,sur);
+		#~ if(!t){
+			#~ SET_ARCHIVE_LOG_ERROR("%s.",SDL_GetError());
+			#~ SDL_FreeSurface(sur);
+			#~ SET_ARCHIVE_FREE(m);
+			#~ return NULL;
+		#~ }
+		#~ if(w)
+			#~ *w=sur->w;
+		#~ if(h)
+			#~ *h=sur->h;
+		#~ SDL_FreeSurface(sur);
+		#~ SET_ARCHIVE_FREE(m);
+		#~ return t;
+	#~ }
+	#~ return NULL;
+#~ }
+#~ static Mix_Music *set_archive_load_music(SDL_RWops *rw,struct SET_ARCHIVE_RECORD *r,Uint8**pdata){
+	#~ SDL_assert(rw && pdata);
+	#~ Uint8 *m=set_archive_load_record_sdl(rw,r);
+	#~ if(m){
+		#~ SDL_RWops *o=SDL_RWFromConstMem(m,r->esize?r->esize:r->size);
+		#~ if(!o){
+			#~ SET_ARCHIVE_LOG_ERROR("%s",SDL_GetError());
+			#~ SET_ARCHIVE_FREE(m);
+			#~ return NULL;
+		#~ }
+		#~ Mix_Music *mus=Mix_LoadMUS_RW(o,1);
+		#~ if(!mus){
+			#~ SET_ARCHIVE_LOG_ERROR("%s",Mix_GetError());
+			#~ SET_ARCHIVE_FREE(m);
+		#~ }
+		#~ *pdata=m;
+		#~ return mus;
+	#~ }
+	#~ return NULL;
+#~ }
+#~ #ifdef SET_ARCHIVE_BOXY4
+#~ static struct boxyheader*set_archive_loadboxy(SDL_RWops*rw,
+#~ struct SET_ARCHIVE_RECORD *r){
+	#~ SDL_assert_always("Запись не является файлом с хитбоксами." && ((r->esize && r->esize>=sizeof(struct boxyheader))||
+	#~ (!r->esize && r->size>=sizeof(struct boxyheader))));
+	#~ if((r->esize && r->esize<sizeof(struct boxyheader))||
+	#~ (!r->esize && r->size<sizeof(struct boxyheader)))
+		#~ return NULL;
+	#~ struct boxyheader*m=(typeof(m))set_archive_load_record_sdl(rw,r);
+	#~ if(m){
+		#~ SDL_assert_always("Запись не является файлом с хитбоксами." &&
+		#~ m->magic[0]=='B' && m->magic[1]=='O' && m->magic[2]=='X' && m->magic[3]=='Y' &&
+		#~ m->magic[4]=='4' && m->magic[5]=='L' && m->magic[6]=='O' && m->magic[7]=='E');
+		#~ if(m->magic[0]!='B' || m->magic[1]!='O' || m->magic[2]!='X' || m->magic[3]!='Y' ||
+		#~ m->magic[4]!='4' || m->magic[5]!='L' || m->magic[6]!='O' || m->magic[7]!='E'){
+			#~ SDL_free(m);
+			#~ return NULL;
+		#~ }
+		#~ if((m->bigendian && SDL_BYTEORDER!=SDL_BIG_ENDIAN)||
+			#~ (!m->bigendian && SDL_BYTEORDER!=SDL_LIL_ENDIAN)){
+			#~ #define swap16(x) ((x<<8)|(x>>8))
+			#~ m->n_frames=swap16(m->n_frames);
+			#~ for(typeof(m->n_frames) oi=0;oi<m->n_frames;++m->n_frames){
+				#~ #define swap32(x) ((x<<24)|(x>>24)|((x<<8)&0xff0000)|((x>>8)&0xff00))
+				#~ m->offsets[oi]=swap32(m->offsets[oi]);
+				#~ #undef swap32
+				#~ struct hitboxes*hb=(typeof(hb))(((Uint8*)m)+sizeof(*m)+
+					#~ sizeof(m->offsets[0])*m->n_frames+m->offsets[oi]);
+				#~ hb->n_boxes=swap16(hb->n_boxes);
+				#~ hb->frame.x=swap16(hb->frame.x);
+				#~ hb->frame.y=swap16(hb->frame.y);
+				#~ hb->frame.w=swap16(hb->frame.w);
+				#~ hb->frame.h=swap16(hb->frame.h);
+				#~ hb->lazy.x=swap16(hb->lazy.x);
+				#~ hb->lazy.y=swap16(hb->lazy.y);
+				#~ hb->lazy.w=swap16(hb->lazy.w);
+				#~ hb->lazy.h=swap16(hb->lazy.h);
+				#~ for(typeof(hb->n_boxes) bi=0;bi<hb->n_boxes;++bi){
+					#~ hb->box[bi].x=swap16(hb->box[bi].x);
+					#~ hb->box[bi].y=swap16(hb->box[bi].y);
+					#~ hb->box[bi].w=swap16(hb->box[bi].w);
+					#~ hb->box[bi].h=swap16(hb->box[bi].h);
+				#~ }
+			#~ }
+			#~ #undef swap16
+		#~ }
+	#~ }
+	#~ return m;
+#~ }
+#~ #endif //SET_ARCHIVE_BOXY4
+#~ #endif //SET_ARCHIVE_SDL
+#~ };
+	#~ }
+	#~ return shift=~s/(^|\W)set::archive_works\s*;/$1._archiveworks()/erg;
+#~ }
 sub archiveworks($){
 	sub _archiveworks{
 		return qq{struct SET_ARCHIVE_RECORD{
@@ -894,7 +1148,6 @@ sub archiveworks($){
 	size_t esize;
 };
 
-#ifdef SET_ARCHIVE_SDL
 static void set_archive_reset_records(struct SET_ARCHIVE_RECORD*r,int n){
 	for(int i=0;i<n;++i){
 		r->offset= -1;
@@ -1085,57 +1338,53 @@ static Mix_Music *set_archive_load_music(SDL_RWops *rw,struct SET_ARCHIVE_RECORD
 	}
 	return NULL;
 }
-#ifdef SET_ARCHIVE_BOXY4
 static struct boxyheader*set_archive_loadboxy(SDL_RWops*rw,
-struct SET_ARCHIVE_RECORD *r){
-	SDL_assert_always("Запись не является файлом с хитбоксами." && ((r->esize && r->esize>=sizeof(struct boxyheader))||
-	(!r->esize && r->size>=sizeof(struct boxyheader))));
-	if((r->esize && r->esize<sizeof(struct boxyheader))||
-	(!r->esize && r->size<sizeof(struct boxyheader)))
+struct SET_ARCHIVE_RECORD*r){
+	SDL_assert_always("Запись не является файлом с хитбоксами." && ((r->esize && r->esize>sizeof(struct boxyheader))||
+	(!r->esize && r->size>sizeof(struct boxyheader))));
+	if((r->esize && r->esize<=sizeof(struct boxyheader))||
+	(!r->esize && r->size<=sizeof(struct boxyheader)))
 		return NULL;
 	struct boxyheader*m=(typeof(m))set_archive_load_record_sdl(rw,r);
-	if(m){
-		SDL_assert_always("Запись не является файлом с хитбоксами." &&
+	if(!m)
+		return NULL;
+	SDL_assert_always("Запись не является файлом с хитбоксами." &&
 		m->magic[0]=='B' && m->magic[1]=='O' && m->magic[2]=='X' && m->magic[3]=='Y' &&
-		m->magic[4]=='4' && m->magic[5]=='L' && m->magic[6]=='O' && m->magic[7]=='E');
-		if(m->magic[0]!='B' || m->magic[1]!='O' || m->magic[2]!='X' || m->magic[3]!='Y' ||
-		m->magic[4]!='4' || m->magic[5]!='L' || m->magic[6]!='O' || m->magic[7]!='E'){
-			SDL_free(m);
-			return NULL;
-		}
-		if((m->bigendian && SDL_BYTEORDER!=SDL_BIG_ENDIAN)||
-			(!m->bigendian && SDL_BYTEORDER!=SDL_LIL_ENDIAN)){
-			#define swap16(x) ((x<<8)|(x>>8))
-			m->n_frames=swap16(m->n_frames);
-			for(typeof(m->n_frames) oi=0;oi<m->n_frames;++m->n_frames){
-				#define swap32(x) ((x<<24)|(x>>24)|((x<<8)&0xff0000)|((x>>8)&0xff00))
-				m->offsets[oi]=swap32(m->offsets[oi]);
-				#undef swap32
-				struct hitboxes*hb=(typeof(hb))(((Uint8*)m)+sizeof(*m)+
-					sizeof(m->offsets[0])*m->n_frames+m->offsets[oi]);
-				hb->n_boxes=swap16(hb->n_boxes);
-				hb->frame.x=swap16(hb->frame.x);
-				hb->frame.y=swap16(hb->frame.y);
-				hb->frame.w=swap16(hb->frame.w);
-				hb->frame.h=swap16(hb->frame.h);
-				hb->lazy.x=swap16(hb->lazy.x);
-				hb->lazy.y=swap16(hb->lazy.y);
-				hb->lazy.w=swap16(hb->lazy.w);
-				hb->lazy.h=swap16(hb->lazy.h);
-				for(typeof(hb->n_boxes) bi=0;bi<hb->n_boxes;++bi){
-					hb->box[bi].x=swap16(hb->box[bi].x);
-					hb->box[bi].y=swap16(hb->box[bi].y);
-					hb->box[bi].w=swap16(hb->box[bi].w);
-					hb->box[bi].h=swap16(hb->box[bi].h);
-				}
+		m->magic[4]=='L' && m->magic[5]=='O' && m->magic[6]=='E' && m->magic[7]=='5');
+	if(m->magic[0]!='B' || m->magic[1]!='O' || m->magic[2]!='X' || m->magic[3]!='Y' ||
+		m->magic[4]!='L' || m->magic[5]!='O' || m->magic[6]!='E' || m->magic[7]!='5')
+		return NULL;
+	if((m->bigendian && SDL_BYTEORDER!=SDL_BIG_ENDIAN)||
+		(!m->bigendian && SDL_BYTEORDER!=SDL_LIL_ENDIAN)){
+#define set_archive_loadboxy_swap32(x) x=(((Uint32)x>>24)|((Uint32)x<<24)|(((Uint32)x>>8)&0xff00)|(((Uint32)x<<8)&0xff0000))
+#define set_archive_loadboxy_swap64(x) x=(((Uint64)x>>56)|((Uint64)x>>56)|(((Uint64)x>>40)&0xff00)|(((Uint64)x<<40)&0xff000000000000)|(((Uint64)x>>24)&0xff0000)|(((Uint64)x<<24)&0xff0000000000)|(((Uint64)x>>8)&0xff000000)|(((Uint64)x<<8)&0xff00000000))
+		set_archive_loadboxy_swap32(m->width);
+		set_archive_loadboxy_swap32(m->height);
+		set_archive_loadboxy_swap64(m->n_frames);
+		for(Uint64 o=0;o<m->n_frames;++o){
+			set_archive_loadboxy_swap64(m->offsets[o]);
+			struct boxyhitboxes *hb=(typeof(hb))((Uint8*)m+m->offsets[o]+sizeof(struct boxyheader)+sizeof(typeof(((struct boxyheader*)0)->offsets[0]))*m->n_frames);
+			set_archive_loadboxy_swap64(hb->n_boxes);
+			set_archive_loadboxy_swap32(hb->frame.x);
+			set_archive_loadboxy_swap32(hb->frame.y);
+			set_archive_loadboxy_swap32(hb->frame.w);
+			set_archive_loadboxy_swap32(hb->frame.h);
+			set_archive_loadboxy_swap32(hb->lazy.x);
+			set_archive_loadboxy_swap32(hb->lazy.y);
+			set_archive_loadboxy_swap32(hb->lazy.w);
+			set_archive_loadboxy_swap32(hb->lazy.h);
+			for(Uint64 b=0;b<hb->n_boxes;++b){
+				set_archive_loadboxy_swap32(hb->boxes[b].x);
+				set_archive_loadboxy_swap32(hb->boxes[b].y);
+				set_archive_loadboxy_swap32(hb->boxes[b].w);
+				set_archive_loadboxy_swap32(hb->boxes[b].h);
+#undef set_archive_loadboxy_swap64
+#undef set_archive_loadboxy_swap32
 			}
-			#undef swap16
 		}
 	}
 	return m;
 }
-#endif //SET_ARCHIVE_BOXY4
-#endif //SET_ARCHIVE_SDL
 };
 	}
 	return shift=~s/(^|\W)set::archive_works\s*;/$1._archiveworks()/erg;
@@ -1224,7 +1473,7 @@ sub loestack_compose_definitions($$$){
 	if(__builtin_mul_overflow(sizeof(${$t->{array}}[0]),start_queue_length,&rsz) ||
 		__builtin_add_overflow(sizeof(struct $prefix),rsz,&rsz)){
 		LOE_STACK_LOG_OVERFLOW_ERROR;
-		return !!0;
+		return NULL;
 	}
 	s=LOE_STACK_MALLOC(rsz);
 	if(!s){
@@ -1241,7 +1490,7 @@ sub loestack_compose_definitions($$$){
 	struct $prefix*s;
 	size_t rsz;
 	if(__builtin_mul_overflow(sizeof(${$t->{array}}[0]),start_queue_length,&rsz) ||
-		__builtin_add_overflow(sizeof(*s),rsz,&rsz)){
+		__builtin_add_overflow(sizeof(struct $prefix),rsz,&rsz)){
 		LOE_STACK_LOG_OVERFLOW_ERROR;
 		return !!0;
 	}
@@ -1378,11 +1627,12 @@ sub loelist_compose_declarations($$){
 	$c{decllistnewout}=($t->{staticlistnewout}||$t->{allstatic}?'static ':'').
 		"int $prefix\_list_newout(struct $prefix**out,$t->{index_type} start_queue_length)";
 	my $que=defined $t->{queue}?'':",$t->{index_type} *pque";
+	my $que_remove=defined $t->{queue}?'':",const $t->{index_type} pque";
 	my $len=defined $t->{length}?'':",$t->{index_type} *plen";
 	$c{declappend}=($t->{staticappend}||$t->{allstatic}?'static ':'').
 		"enum $prefix\_occupy_result $prefix\_append(struct $prefix**ps$que$len,${$t->{item}}[0] item)";
 	$c{declremove}=($t->{staticremove}||$t->{allstatic}?'static ':'').
-		"void $prefix\_remove(struct $prefix*s$len,$t->{index_type} index)";
+		"void $prefix\_remove(struct $prefix*s$que_remove$len,$t->{index_type} index)";
 	$c{declswap}=($t->{staticswap}||$t->{allstatic}?'static ':'').
 		"void $prefix\_swap(struct $prefix*s,$t->{index_type} a,$t->{index_type} b)";
 	return %c;
@@ -1443,11 +1693,17 @@ sub loelist_compose_definitions($$$){
 		$t->{index_type} nm= $que;
 		do{
 			if(__builtin_mul_overflow(nm,2,&nm)){
-				nm= -1<0?(1<<(sizeof(nm)*8-2))-1+(1<<(sizeof(nm)*8-2)):-1;
+				nm= -1<0?((typeof(nm))1<<(sizeof(nm)*8-2))-1+((typeof(nm))1<<(sizeof(nm)*8-2)):-1;
 				break;
 			}
 		}while(nl>nm);
-		struct $prefix*ns=LOE_STACK_REALLOC(ps[0],sizeof(*ns)+sizeof(${$t->{array}}[0])*nm);
+		size_t rsz;
+		if(__builtin_mul_overflow(nm,sizeof(${$t->{array}}[0]),&rsz) ||
+			__builtin_add_overflow(rsz,sizeof(struct $prefix),&rsz)){
+			LOE_STACK_LOG_OVERFLOW_ERROR;
+			return $prefix\_occupy_overflow_error;
+		}
+		struct $prefix*ns=LOE_STACK_REALLOC(ps[0],rsz);
 		if(!ns){
 			LOE_STACK_LOG_CRITICAL_REALLOC_ERROR;
 			return $prefix\_occupy_critical_realloc_error;
@@ -1461,8 +1717,8 @@ sub loelist_compose_definitions($$$){
 		$nsque=nm;
 		ps[0]=ns;
 	}
-	ps[0]->${$t->{array}}[1]\[ps[0]->$t->{last}\].next=ps[0]->$t->{elast};
-	ps[0]->${$t->{array}}[1]\[ps[0]->$t->{elast}\].prev=ps[0]->$t->{last};
+	ps[0]->${$t->{array}}[1]\[ps[0]->$t->{last}\].$t->{next}=ps[0]->$t->{elast};
+	ps[0]->${$t->{array}}[1]\[ps[0]->$t->{elast}\].$t->{prev}=ps[0]->$t->{last};
 	ps[0]->$t->{last}=ps[0]->$t->{elast};
 	if(($len=nl)!=$que)
 		ps[0]->$t->{elast}=ps[0]->${$t->{array}}[1]\[ps[0]->$t->{elast}\].$t->{eprev};
@@ -1471,24 +1727,25 @@ sub loelist_compose_definitions($$$){
 }
 #;
 	my $slen=defined $t->{length}?"s->$t->{length}":'*plen';
-	my $sque=defined $t->{queue}?"s->$t->{queue}":'*pque';
+	#~ my $sque=defined $t->{queue}?"s->$t->{queue}":'*pque';
+	my $sque=defined $t->{queue}?"s->$t->{queue}":'pque';
 	$f{defremove}=qq#$d->{declremove}\{
 	LOE_STACK_ASSERT($slen>0);
 	if($slen>1){
 		if(index!=s->$t->{first} && index!=s->$t->{last}){
-			s->${$t->{array}}[1]\[s->${$t->{array}}[1]\[index].prev\].next=
-				s->${$t->{array}}[1]\[index\].next;
-			s->${$t->{array}}[1]\[s->${$t->{array}}[1]\[index].next\].prev=
-				s->${$t->{array}}[1]\[index\].prev;
+			s->${$t->{array}}[1]\[s->${$t->{array}}[1]\[index].$t->{prev}\].$t->{next}=
+				s->${$t->{array}}[1]\[index\].$t->{next};
+			s->${$t->{array}}[1]\[s->${$t->{array}}[1]\[index].$t->{next}\].$t->{prev}=
+				s->${$t->{array}}[1]\[index\].$t->{prev};
 		}else if(index==s->$t->{last}){
-			s->$t->{last}=s->${$t->{array}}[1]\[index\].prev;
+			s->$t->{last}=s->${$t->{array}}[1]\[index\].$t->{prev};
 		}else if(index==s->$t->{first}){
-			s->$t->{first}=s->${$t->{array}}[1]\[index\].next;
+			s->$t->{first}=s->${$t->{array}}[1]\[index\].$t->{next};
 		}
 	}
 	if($slen!=$sque){
-		s->${$t->{array}}[1]\[s->$t->{elast}\].enext=index;
-		s->${$t->{array}}[1]\[index\].eprev=s->$t->{elast};
+		s->${$t->{array}}[1]\[s->$t->{elast}\].$t->{enext}=index;
+		s->${$t->{array}}[1]\[index\].$t->{eprev}=s->$t->{elast};
 	}else{
 		s->$t->{efirst}=index;
 	}
@@ -1543,12 +1800,22 @@ sub loereplace{
 	return $body;
 }
 
+sub loeeereplace{
+	my $body=shift;
+	my @records=();
+	$body=$body=~s/(^|\W)loe::eereplace\s*\(\s*$REGEXP_NESTED_BRACKETS\s*,\s*$REGEXP_NESTED_BRACKETS\s*\)\s*;/push @records,[$2,$3];""/erg;
+	for my $r (@records){
+		$body=$body=~s/${$r}[0]/${$r}[1]/eerg;
+	}
+	return $body;
+}
+
 my @dodo=(
 	{
 		regexp=>qr/--mutate=([^:]*):([^:]*)/,
 		action=>sub{
 			my ($srcf,$dstf)=($1,$2);
-			overfile($dstf,exomod('indent -sob',loereplace(loespawn(loestore(loelist(loestack(archiveworks(setarchive(setstack(setlist(iniinfo(iniworks(gperfing(slurpfile($srcf)))))))))))))));
+			overfile($dstf,exomod('indent -sob',loeeereplace(loereplace(loespawn(loestore(loelist(loestack(archiveworks(setarchive(setstack(setlist(iniinfo(iniworks(gperfing(slurpfile($srcf))))))))))))))));
 		}
 	},
 	{
