@@ -1,3 +1,4 @@
+src/loe.pl linguist-vendored=true
 *.pl linguist-language=Perl
 *.c linguist-language=C
 *.h linguist-language=C
