@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-#-*- mode: Perl; -*-
+
 use POSIX ":sys_wait_h";
 
 my $current_script_path=$0;
