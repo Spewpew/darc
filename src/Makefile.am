@@ -1,6 +1,4 @@
-TESTS=ftell
-bin_PROGRAMS=darc ftell
-ftell_SOURCES=ftell.c
+bin_PROGRAMS=darc
 CLEANFILES=main.c
 BUILT_SOURCES=main.c
 main.c:$(srcdir)/loe.pl $(srcdir)/main.loe.pl.c
