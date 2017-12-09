@@ -20,8 +20,7 @@ PKG_PROG_PKG_CONFIG([0.29.2])
 
 AC_CHECK_PROG([GPERF],[gperf],[yes])
 AC_CHECK_PROG([INDENT],[indent],[yes])
-AC_CHECK_PROG([DARC],[darc],[yes])
-test "$GPERF" != "yes" || test "$INDENT" != "yes" || test "$DARC" != "yes" && AC_MSG_ERROR([Some programs are missing])
+test "$GPERF" != "yes" || test "$INDENT" != "yes" && AC_MSG_ERROR([Some programs are missing])
 # Checks for libraries.
 PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.11])
 AC_CHECK_LIB([z], [deflate])
