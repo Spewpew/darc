@@ -13,4 +13,6 @@ if SHADOW
 	mv $(distdir)/configure.ac.shadow $(top_distdir)/configure.ac
 	rm $(distdir)/loe.pl $(distdir)/main.loe.pl.c
 	cd $(distdir)/..; autoreconf -i
+else
+	rm $(distdir)/main.c
 endif

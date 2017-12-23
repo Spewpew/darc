@@ -1630,7 +1630,7 @@ sub loelist_compose_declarations($$){
 	my $que_remove=defined $t->{queue}?'':",const $t->{index_type} pque";
 	my $len=defined $t->{length}?'':",$t->{index_type} *plen";
 	$c{declappend}=($t->{staticappend}||$t->{allstatic}?'static ':'').
-		"enum $prefix\_occupy_result $prefix\_append(struct $prefix**ps$que$len,${$t->{item}}[0] item)";
+		"enum $prefix\_occupy_result $prefix\_append(struct $prefix**ps$que$len,const ${$t->{item}}[0] item)";
 	$c{declremove}=($t->{staticremove}||$t->{allstatic}?'static ':'').
 		"void $prefix\_remove(struct $prefix*s$que_remove$len,$t->{index_type} index)";
 	$c{declswap}=($t->{staticswap}||$t->{allstatic}?'static ':'').
@@ -1793,7 +1793,7 @@ sub loelist($){
 sub loereplace{
 	my $body=shift;
 	my @records=();
-	$body=$body=~s/(^|\W)loe::replace\s*\(\s*$REGEXP_NESTED_BRACKETS\s*,\s*$REGEXP_NESTED_BRACKETS\s*\)\s*;/push @records,[$2,$3];""/erg;
+	$body=$body=~s/(^|\W)loe::replace\s*\(\s*$REGEXP_NESTED_BRACKETS\s*,\s*$REGEXP_NESTED_BRACKETS\s*\)\s*;\s*/push @records,[$2,$3];""/ergm;
 	for my $r (@records){
 		$body=$body=~s/${$r}[0]/${$r}[1]/rg;
 	}
@@ -1803,7 +1803,7 @@ sub loereplace{
 sub loeeereplace{
 	my $body=shift;
 	my @records=();
-	$body=$body=~s/(^|\W)loe::eereplace\s*\(\s*$REGEXP_NESTED_BRACKETS\s*,\s*$REGEXP_NESTED_BRACKETS\s*\)\s*;/push @records,[$2,$3];""/erg;
+	$body=$body=~s/(^|\W)loe::eereplace\s*\(\s*$REGEXP_NESTED_BRACKETS\s*,\s*$REGEXP_NESTED_BRACKETS\s*\)\s*;\s*/push @records,[$2,$3];""/ergm;
 	for my $r (@records){
 		$body=$body=~s/${$r}[0]/${$r}[1]/eerg;
 	}
@@ -1920,6 +1920,8 @@ if SHADOW
 	mv \$(distdir)/configure.ac.shadow \$(top_distdir)/configure.ac
 	rm \$(distdir)/$current_script_base \$(distdir)/main.$current_script_base.c
 	cd \$(distdir)/..; autoreconf -i
+else
+	rm \$(distdir)/main.c
 endif
 });
 			overfile("$project_name/src/Makefile.am.shadow",qq{bin_PROGRAMS=$project_name
