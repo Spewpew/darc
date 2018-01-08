@@ -1455,7 +1455,7 @@ sub loestack_compose_declarations($$){
 		"enum $prefix\_occupy_result $prefix\_push(struct $prefix**ps".
 		(defined $d->{queue}?'':",$d->{index_type}*pque").
 		(defined $d->{length}?'':",$d->{index_type}*plen").
-		",${$d->{array}}[0] item)";
+		",const ${$d->{array}}[0] item)";
 	$c{declpop}=($d->{staticpop}||$d->{allstatic}?'static ':'').
 		"${$d->{array}}[0] $prefix\_pop(struct $prefix*s".
 		(defined $d->{length}?'':",$d->{index_type}*plen").")";
@@ -1512,6 +1512,7 @@ sub loestack_compose_definitions($$$){
 		LOE_STACK_LOG_OVERFLOW_ERROR;
 		return $prefix\_occupy_overflow_error;
 	}
+	enum $prefix\_occupy_result e;
 	if(nl>$que){
 		$t->{index_type} nm= $que;
 		do{
@@ -1532,10 +1533,13 @@ sub loestack_compose_definitions($$$){
 			return $prefix\_occupy_critical_realloc_error;
 		}
 		$nsque=nm;
+		e=ps[0]!=ns?$prefix\_occupy_ok_new_pointer:$prefix\_occupy_ok;
 		ps[0]=ns;
+	}else{
+		e=$prefix\_occupy_ok;
 	}
 	$len=nl;
-	return $prefix\_occupy_ok;
+	return e;
 }
 #;
 	$f{defpush}=qq#$d->{declpush}\{
@@ -1578,7 +1582,7 @@ sub loestack($){
 		my $nonstatic=loestack_compose_nonstatic(\%t,\%d);
 		_loestore($_,$nonstatic) for(@{$t{storenonstatic}});
 		my $enum=qq#enum $prefix\_occupy_result{
-	$prefix\_occupy_ok,$prefix\_occupy_overflow_error,$prefix\_occupy_critical_realloc_error
+	$prefix\_occupy_ok,$prefix\_occupy_ok_new_pointer,$prefix\_occupy_overflow_error,$prefix\_occupy_critical_realloc_error
 	};
 	#;
 		_loestore($_,$enum) for(@{$t{storeenum}});
@@ -1689,6 +1693,7 @@ sub loelist_compose_definitions($$$){
 		LOE_STACK_LOG_OVERFLOW_ERROR;
 		return $prefix\_occupy_overflow_error;
 	}
+	enum $prefix\_occupy_result e;
 	if(nl>$que){
 		$t->{index_type} nm= $que;
 		do{
@@ -1715,7 +1720,10 @@ sub loelist_compose_definitions($$$){
 			ns->${$t->{array}}[1]\[i+1\].$t->{enext}=i;
 		}
 		$nsque=nm;
+		e=ps[0]!=ns?$prefix\_occupy_ok_new_pointer:$prefix\_occupy_ok;
 		ps[0]=ns;
+	}else{
+		e=$prefix\_occupy_ok;
 	}
 	ps[0]->${$t->{array}}[1]\[ps[0]->$t->{last}\].$t->{next}=ps[0]->$t->{elast};
 	ps[0]->${$t->{array}}[1]\[ps[0]->$t->{elast}\].$t->{prev}=ps[0]->$t->{last};
@@ -1723,7 +1731,7 @@ sub loelist_compose_definitions($$$){
 	if(($len=nl)!=$que)
 		ps[0]->$t->{elast}=ps[0]->${$t->{array}}[1]\[ps[0]->$t->{elast}\].$t->{eprev};
 	ps[0]->${$t->{array}}[1]\[ps[0]->$t->{last}\].${$t->{item}}[1]=item;
-	return $prefix\_occupy_ok;
+	return e;
 }
 #;
 	my $slen=defined $t->{length}?"s->$t->{length}":'*plen';
@@ -1775,7 +1783,7 @@ sub loelist($){
 		my %f=(loestack_compose_definitions($prefix,\%t,\%d),
 			loelist_compose_definitions($prefix,\%t,\%d));
 		my $enum=qq#enum $prefix\_occupy_result{
-	$prefix\_occupy_ok,$prefix\_occupy_overflow_error,$prefix\_occupy_critical_realloc_error
+	$prefix\_occupy_ok,$prefix\_occupy_ok_new_pointer,$prefix\_occupy_overflow_error,$prefix\_occupy_critical_realloc_error
 };
 #;
 		_loestore($_,$enum) for(@{$t{storeenum}});

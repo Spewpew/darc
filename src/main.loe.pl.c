@@ -273,7 +273,8 @@ set::ini_info(opt){
 							wlog("Attempt to redefine %s '%s'.",k->setstring.msg,opt_in_file->data);
 							k->setstring.pstr[0]->size=0;
 							switch(tcstr_occupy(&k->setstring.pstr[0],vz+1)){
-								case tcstr_occupy_ok:{
+								case tcstr_occupy_ok:
+								case tcstr_occupy_ok_new_pointer:{
 									k->setstring.pstr[0]->size=vz+1;
 									k->setstring.pstr[0]->data[vz]='\0';
 									memcpy(k->setstring.pstr[0]->data,v,vz);
