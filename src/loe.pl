@@ -557,6 +557,7 @@ l_equsgn:;		const char *vs= ++s;
 				if(*s=='\\'' || *s=='"'){
 					char c= *s;
 					++vs;
+					++s;
 					if(!set_ini_till_zero_or_char(&s,c))
 						return SET_INI_PARSER_UTF8_ERROR;
 					if(!*s)
