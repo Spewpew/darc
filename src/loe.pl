@@ -1547,7 +1547,7 @@ sub loestack_compose_definitions($$$){
 	enum $prefix\_occupy_result e=$prefix\_occupy(ps#.
 		(defined $t->{queue}?'':',pque').
 		(defined $t->{length}?'':',plen').qq#,1);
-	if(e==$prefix\_occupy_ok)
+	if(e==$prefix\_occupy_ok || e==$prefix\_occupy_ok_new_pointer)
 		ps[0]->${$t->{array}}[1]\[$len-1\]=item;
 	return e;
 }
